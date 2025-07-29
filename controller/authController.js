@@ -20,11 +20,11 @@ const register = async (req, res) => {
       });
     }
 
-    const hashedPasseord = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
       email,
-      password: hashedPasseord,
+      password: hashedPassword,
     });
 
     res.status(201).json({
@@ -61,12 +61,16 @@ const login = async (req, res) => {
 
     if (!isValidPassword) {
       return res.status(400).json({
-        message: "Invalid email or password",
+        mesage: "Invalid email or password",
       });
     }
 
     const token = jwt.sign(
-      { email: user.email, role: user.role },
+      {
+        email: user.email,
+        role: user.role,
+        _id: user._id,
+      },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
@@ -96,8 +100,30 @@ const logout = (req, res) => {
   });
 };
 
+const verifyUser = (req, res, next) => {
+  // Check if the token exists in the request cookies
+  const token = req.cookies.jwt;
+  if (!token)
+    return res.status(401).json({
+      authenticated: false,
+    });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    res.status(200).json({
+      authenticated: true,
+      user: decoded,
+    });
+  } catch (err) {
+    res.status(401).json({
+      authenticated: false,
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
   logout,
+  verifyUser,
 };
